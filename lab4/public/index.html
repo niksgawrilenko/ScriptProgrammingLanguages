@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width" />
+  <title>Список пользователей</title>
+  <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body>
+  <h2>Список студентів</h2>
+  <form name="studentForm">
+    <input type="hidden" name="id" value="0" />
+    <div class="form-group">
+      <label for="name">Ім'я:</label>
+      <input class="form-control" name="name" />
+    </div>
+    <div class="form-group">
+      <label for="average_rating">Середній бал:</label>
+      <input class="form-control" name="average_rating" />
+    </div>
+    <div class="panel-body">
+      <button type="submit" class="btn btn-sm btn-primary">Зберегти</button>
+      <a id="reset" class="btn btn-sm btn-primary">Скинути</a>
+    </div>
+  </form>
+  <table class="table table-condensed table-striped table-bordered">
+    <thead><tr><th>Id</th><th>Ім'я</th><th>Середній бал</th><th></th></tr></thead>
+    <tbody>
+    </tbody>
+  </table>
+  
+  <script>
+  // Получение всех пользователей
+    async function GetStudents() {
+      // отправляет запрос и получаем ответ
+      const response = await fetch("/api/students", {
+        method: "GET",
+        headers: { "Accept": "application/json" }
+      });
+      // если запрос прошел нормально
+      if (response.ok === true) {
+        // получаем данные
+        const students = await response.json();
+        let rows = document.querySelector("tbody"); 
+        students.forEach(student => {
+          // добавляем полученные элементы в таблицу
+          rows.append(row(student));
+        });
+      }
+    }
+    // Получение одного пользователя
+    async function GetStudent(id) {
+      const response = await fetch("/api/students/" + id, {
+        method: "GET",
+        headers: { "Accept": "application/json" }
+      });
+      if (response.ok === true) {
+        const student = await response.json();
+        const form = document.forms["studentForm"];
+        form.elements["id"].value = student._id;
+        form.elements["name"].value = student.name;
+        form.elements["average_rating"].value = student.average_rating;
+      }
+    }
+    // Добавление пользователя
+    async function CreateStudent(studentName, averageRating) {
+
+      const response = await fetch("api/students", {
+        method: "POST",
+        headers: { "Accept": "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: studentName,
+          average_rating: parseInt(averageRating, 10)
+        })
+      });
+      if (response.ok === true) {
+        const student = await response.json();
+        reset();
+        document.querySelector("tbody").append(row(student));
+      }
+    }
+    // Изменение пользователя
+    async function EditStudent(studentId, studentName, averageRating) {
+      const response = await fetch("api/students", {
+        method: "PUT",
+        headers: { "Accept": "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: studentId,
+          name: studentName,
+          average_rating: parseInt(averageRating, 10)
+        })
+      });
+      if (response.ok === true) {
+        const student = await response.json();
+        reset();
+        document.querySelector("tr[data-rowid='" + student._id + "']").replaceWith(row(student));
+      }
+    }
+    // Удаление пользователя
+    async function DeleteStudent(id) {
+      const response = await fetch("/api/students/" + id, {
+        method: "DELETE",
+        headers: { "Accept": "application/json" }
+      });
+      if (response.ok === true) {
+        const student = await response.json();
+        document.querySelector("tr[data-rowid='" + student._id + "']").remove();
+      }
+    }
+
+    // сброс формы
+    function reset() {
+      const form = document.forms["studentForm"];
+      form.reset();
+      form.elements["id"].value = 0;
+    }
+    // создание строки для таблицы
+    function row(student) {
+
+      const tr = document.createElement("tr");
+      tr.setAttribute("data-rowid", student._id);
+
+      const idTd = document.createElement("td");
+      idTd.append(student._id);
+      tr.append(idTd);
+
+      const nameTd = document.createElement("td");
+      nameTd.append(student.name);
+      tr.append(nameTd);
+
+      const averageRatingTd = document.createElement("td");
+      averageRatingTd.append(student.average_rating);
+      tr.append(averageRatingTd);
+        
+      const linksTd = document.createElement("td");
+
+      const editLink = document.createElement("a");
+      editLink.setAttribute("data-id", student._id);
+      editLink.setAttribute("style", "cursor:pointer;padding:15px;");
+      editLink.append("Змінити");
+      editLink.addEventListener("click", e => {
+
+        e.preventDefault();
+        GetStudent(student._id);
+      });
+      linksTd.append(editLink);
+
+      const removeLink = document.createElement("a");
+      removeLink.setAttribute("data-id", student._id);
+      removeLink.setAttribute("style", "cursor:pointer;padding:15px;");
+      removeLink.append("Видалити");
+      removeLink.addEventListener("click", e => {
+
+        e.preventDefault();
+        DeleteStudent(student._id);
+      });
+
+      linksTd.append(removeLink);
+      tr.appendChild(linksTd);
+
+      return tr;
+    }
+    // сброс значений формы
+    document.getElementById("reset").click(function (e) {
+
+        e.preventDefault();
+        reset();
+    })
+
+    // отправка формы
+    document.forms["studentForm"].addEventListener("submit", e => {
+      e.preventDefault();
+      const form = document.forms["studentForm"];
+      const id = form.elements["id"].value;
+      const name = form.elements["name"].value;
+      const averageRating = form.elements["average_rating"].value;
+      if (id == 0)
+        CreateStudent(name, averageRating);
+      else
+        EditStudent(id, name, averageRating);
+    });
+
+    // загрузка пользователей
+    GetStudents();
+  </script>
+</body>
+</html>
